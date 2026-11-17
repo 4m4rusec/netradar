@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetExplorer // Diagnóstico & Reconocimiento de Red</title>
+    
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        zinc: {
+                            850: '#1f1f23',
+                            925: '#111114',
+                            950: '#09090b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar for Terminal / Technical Aesthetic */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #09090b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
+        }
+
+        /* Subtle grid pattern background */
+        .bg-grid-pattern {
+            background-size: 24px 24px;
+            background-image: 
+                linear-gradient(to right, rgba(39, 39, 42, 0.25) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(39, 39, 42, 0.25) 1px, transparent 1px);
+        }
+
+        /* Pulse animation for active telemetry */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-[#09090b] text-zinc-100 font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200 overflow-x-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Mobile Header -->
+    <header class="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-[#111114]/95 backdrop-blur border-b border-[#27272a]">
+        <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-md bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-mono font-bold text-sm">
+                &gt;_
+            </div>
+            <div>
+                <span class="font-mono font-semibold text-sm tracking-tight text-zinc-100">NET<span class="text-emerald-400">EXPLORER</span></span>
+                <span class="ml-1.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">v2.4</span>
+            </div>
+        </div>
+        <button id="mobile-menu-btn" class="p-2 rounded-lg bg-[#18181b] border border-[#27272a] text-zinc-300 hover:text-white focus:outline-none" aria-label="Abrir menú">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-30 hidden lg:hidden transition-opacity"></div>
+
+    <!-- Main Split-Pane Layout -->
+    <div class="min-h-screen flex flex-col lg:flex-row">
+        
+        <!-- Left Navigation Sidebar -->
+        <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-40 h-screen w-72 bg-[#111114] border-r border-[#27272a] flex flex-col justify-between transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out">
+            
+            <!-- Top Brand & Navigation -->
+            <div class="p-4 overflow-y-auto">
+                <!-- Brand Header -->
+                <div class="flex items-center justify-between px-2 py-2 mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/10 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-mono font-bold text-sm shadow-inner">
+                            &gt;_
+                        </div>
+                        <div>
+                            <div class="font-mono font-bold text-sm tracking-tight text-zinc-100 flex items-center gap-1.5">
+                                NET<span class="text-emerald-400">RADAR</span>
+                            </div>
+                            <div class="text-[11px] font-mono text-zinc-500">PROTOCOL &amp; IP RECON</div>
+                        </div>
+                    </div>
+                    <button id="close-sidebar-btn" class="lg:hidden p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Navigation Section Label -->
+                <div class="px-2 mb-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-zinc-500">
+                    Módulos de Diagnóstico
+                </div>
+
+                <!-- Navigation Menu -->
+                <nav class="space-y-1" id="nav-menu">
+                    <!-- Option 1: Mi IP Pública -->
+                    <button data-tab="my-ip" class="nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all bg-[#18181b] text-emerald-400 border border-emerald-500/30 shadow-xs">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                            </svg>
+                            <span>Mi IP Pública</span>
+                        </div>
+                        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">01</span>
+                    </button>
+
+                    <!-- Option 2: Consulta WHOIS / IP -->
+                    <button data-tab="whois" class="nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all text-zinc-400 hover:text-zinc-100 hover:bg-[#18181b]/70 border border-transparent">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z"/>
+                            </svg>
+                            <span>Consulta WHOIS / IP</span>
+                        </div>
+                        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-500">02</span>
+                    </button>
+
+                    <!-- Option 3: Estado de Host / Web -->
+                    <button data-tab="host-status" class="nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all text-zinc-400 hover:text-zinc-100 hover:bg-[#18181b]/70 border border-transparent">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                            </svg>
+                            <span>Estado de Host / Web</span>
+                        </div>
+                        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-500">03</span>
+                    </button>
+
+                    <!-- Option 4: Escáner de Puertos -->
+                    <button data-tab="port-scanner" class="nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all text-zinc-400 hover:text-zinc-100 hover:bg-[#18181b]/70 border border-transparent">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                            </svg>
+                            <span>Escáner de Puertos</span>
+                        </div>
+                        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-500">04</span>
+                    </button>
+                </nav>
+
+                <!-- Quick Summary Box inside Sidebar -->
+                <div class="mt-8 p-3.5 rounded-xl bg-[#18181b]/80 border border-[#27272a]">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-mono uppercase text-zinc-400">Tu Sesión Activa</span>
+                        <span id="sidebar-ip-badge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">IPv4</span>
+                    </div>
+                    <div id="sidebar-current-ip" class="font-mono text-xs text-zinc-200 truncate select-all">
+                        Detectando...
+                    </div>
+                    <div id="sidebar-current-isp" class="text-[11px] text-zinc-500 truncate mt-0.5">
+                        Consultando ASN...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom System Telemetry Status -->
+            <div class="p-4 border-t border-[#27272a] bg-[#0d0d10]">
+                <div class="flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="relative flex h-2.5 w-2.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                        <span class="font-mono text-zinc-300 text-[11px]">MOTOR EN LÍNEA</span>
+                    </div>
+                    <span class="font-mono text-[10px] text-zinc-500">TLS 1.3 / DoH</span>
+                </div>
+                <div class="mt-2 pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[10px] font-mono text-zinc-500">
+                    <span>APIs: IPIFY • RDAP • CF-DNS</span>
+                    <span id="clock-display">--:--:--</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Main Workspace -->
+        <main class="flex-1 min-w-0 bg-grid-pattern flex flex-col">
+            
+            <!-- Top Workspace Bar (Breadcrumbs & Raw View Toggle) -->
+            <div class="sticky top-0 lg:top-0 z-20 bg-[#09090b]/90 backdrop-blur-md border-b border-[#27272a] px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2 text-xs font-mono">
+                    <span class="text-zinc-500">netexplorer</span>
+                    <span class="text-zinc-600">/</span>
+                    <span class="text-zinc-400">diagnóstico</span>
+                    <span class="text-zinc-600">/</span>
+                    <span id="breadcrumb-current" class="text-emerald-400 font-medium">mi-ip-publica</span>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                    <!-- Toggle Raw JSON Output -->
+                    <button id="toggle-raw-btn" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono bg-[#111114] hover:bg-[#18181b] text-zinc-300 border border-[#27272a] transition-colors">
+                        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                        </svg>
+                        <span id="toggle-raw-label">JSON</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workspace Content Container -->
+            <div class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-6">
+
+                <!-- ========================================================= -->
+                <!-- MODULE 1: MI IP PÚBLICA                                   -->
+                <!-- ========================================================= -->
+                <section id="panel-my-ip" class="module-panel space-y-6">
+                    <!-- Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#27272a] pb-5">
+                        <div>
+                            <div class="flex items-center gap-2.5">
+                                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100">Mi Dirección IP Pública</h1>
+                                <span id="myip-status-badge" class="px-2 py-0.5 text-[11px] font-mono rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                    SINCRONIZANDO...
+                                </span>
+                            </div>
+                            <p class="text-sm text-zinc-400 mt-1">
+                                Identificación en tiempo real de tu interfaz de salida WAN (priorizando IPv4), operador ASN y geolocalización de red.
+                            </p>
+                        </div>
+                        <button id="refresh-myip-btn" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-mono font-medium bg-emerald-500 hover:bg-emerald-400 text-zinc-950 transition-all shadow-sm shrink-0">
+                            <svg id="refresh-myip-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span>Actualizar Detección</span>
+                        </button>
+                    </div>
+
+                    <!-- Primary Hero IPv4 & Secondary IPv6 Cards -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        <!-- IPv4 Hero Card (Prioritized - 7 cols) -->
+                        <div class="lg:col-span-7 bg-[#111114] border border-[#27272a] hover:border-emerald-500/40 transition-colors rounded-xl p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden">
+                            <div class="absolute top-0 right-0 px-3 py-1 bg-emerald-500/10 border-b border-l border-emerald-500/20 rounded-bl-lg text-[10px] font-mono text-emerald-400 uppercase tracking-wider">
+                                Protocolo Prioritario • IPv4
+                            </div>
+                            
+                            <div>
+                                <div class="text-xs font-mono text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    Dirección IPv4 Pública
+                                </div>
+                                <div class="flex flex-wrap items-center gap-3 mt-3">
+                                    <div id="my-ipv4-value" class="font-mono text-2xl sm:text-4xl font-bold tracking-tight text-zinc-100 select-all">
+                                        Detectando...
+                                    </div>
+                                    <button onclick="copyTextById('my-ipv4-value', 'Dirección IPv4 copiada')" class="p-2 rounded-lg bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] text-zinc-300 hover:text-emerald-400 transition-colors" title="Copiar IPv4">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-4 border-t border-[#27272a]/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                                <span class="text-zinc-400">Proveedor: <strong id="my-ipv4-isp-inline" class="text-zinc-200 font-medium">Cargando...</strong></span>
+                                <button id="inspect-own-ip-btn" class="text-cyan-400 hover:text-cyan-300 underline underline-offset-4">
+                                    Auditar en WHOIS &rarr;
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- IPv6 Secondary Card (5 cols) -->
+                        <div class="lg:col-span-5 bg-[#111114] border border-[#27272a] rounded-xl p-5 sm:p-6 flex flex-col justify-between relative">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-mono text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                                        <span id="ipv6-dot" class="w-2 h-2 rounded-full bg-zinc-600"></span>
+                                        Conectividad IPv6
+                                    </span>
+                                    <span id="ipv6-status-pill" class="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                        VERIFICANDO
+                                    </span>
+                                </div>
+                                <div class="mt-3 flex items-start justify-between gap-2">
+                                    <div id="my-ipv6-value" class="font-mono text-sm sm:text-base font-medium text-zinc-300 break-all select-all">
+                                        Comprobando pila dual...
+                                    </div>
+                                    <button id="copy-ipv6-btn" onclick="copyTextById('my-ipv6-value', 'Dirección IPv6 copiada')" class="hidden p-1.5 rounded-lg bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] text-zinc-300 hover:text-cyan-400 shrink-0" title="Copiar IPv6">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-4 border-t border-[#27272a]/80 text-xs text-zinc-500 font-mono">
+                                <span id="ipv6-note">Dual-Stack: Consultando interfaz IPv6 externa.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Network & Geolocation Metadata Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4">
+                            <div class="text-[11px] font-mono text-zinc-500 uppercase">ISP / Proveedor</div>
+                            <div id="meta-isp" class="font-mono text-sm font-semibold text-zinc-100 mt-1 truncate">—</div>
+                            <div id="meta-org" class="text-xs text-zinc-400 mt-0.5 truncate">—</div>
+                        </div>
+
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4">
+                            <div class="text-[11px] font-mono text-zinc-500 uppercase">Sistema Autónomo (ASN)</div>
+                            <div id="meta-asn" class="font-mono text-sm font-semibold text-cyan-400 mt-1 truncate">—</div>
+                            <div id="meta-route" class="text-xs font-mono text-zinc-400 mt-0.5 truncate">Enrutamiento BGP</div>
+                        </div>
+
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4">
+                            <div class="text-[11px] font-mono text-zinc-500 uppercase">Ubicación Geográfica</div>
+                            <div id="meta-location" class="font-mono text-sm font-semibold text-zinc-100 mt-1 truncate">—</div>
+                            <div id="meta-postal" class="text-xs text-zinc-400 mt-0.5 truncate">CP: —</div>
+                        </div>
+
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4">
+                            <div class="text-[11px] font-mono text-zinc-500 uppercase">Coordenadas &amp; Zona</div>
+                            <div id="meta-coords" class="font-mono text-sm font-semibold text-zinc-100 mt-1 truncate">—</div>
+                            <div id="meta-timezone" class="text-xs font-mono text-zinc-400 mt-0.5 truncate">—</div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Technical Table + Coordinate Radar Summary -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="lg:col-span-2 bg-[#111114] border border-[#27272a] rounded-xl overflow-hidden">
+                            <div class="px-4 py-3 bg-[#18181b] border-b border-[#27272a] flex items-center justify-between">
+                                <span class="text-xs font-mono font-semibold text-zinc-200 uppercase tracking-wider">Atributos de Red Detectados</span>
+                                <span class="text-[11px] font-mono text-zinc-500">GEOIP TELEMETRY</span>
+                            </div>
+                            <div class="divide-y divide-[#27272a]/70 text-xs font-mono">
+                                <div class="px-4 py-2.5 flex justify-between gap-4">
+                                    <span class="text-zinc-500">País / Código ISO</span>
+                                    <span id="detail-country" class="text-zinc-200 text-right">—</span>
+                                </div>
+                                <div class="px-4 py-2.5 flex justify-between gap-4">
+                                    <span class="text-zinc-500">Región / Estado</span>
+                                    <span id="detail-region" class="text-zinc-200 text-right">—</span>
+                                </div>
+                                <div class="px-4 py-2.5 flex justify-between gap-4">
+                                    <span class="text-zinc-500">Ciudad</span>
+                                    <span id="detail-city" class="text-zinc-200 text-right">—</span>
+                                </div>
+                                <div class="px-4 py-2.5 flex justify-between gap-4">
+                                    <span class="text-zinc-500">Continente</span>
+                                    <span id="detail-continent" class="text-zinc-200 text-right">—</span>
+                                </div>
+                                <div class="px-4 py-2.5 flex justify-between gap-4">
+                                    <span class="text-zinc-500">Prefijo / Tipo de Red</span>
+                                    <span id="detail-type" class="text-zinc-200 text-right">IPv4 Pública</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Coordinate Visual Telemetry Card -->
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4 flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-mono font-semibold text-zinc-200 uppercase">Nodo Geográfico</span>
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">GPS APROX</span>
+                            </div>
+                            
+                            <!-- Stylized Radar Coordinate Box -->
+                            <div class="my-4 h-36 rounded-lg bg-[#09090b] border border-[#27272a] relative overflow-hidden flex items-center justify-center">
+                                <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#10b981 1px, transparent 1px); background-size: 12px 12px;"></div>
+                                <div class="w-24 h-24 rounded-full border border-emerald-500/20 flex items-center justify-center">
+                                    <div class="w-12 h-12 rounded-full border border-emerald-500/30 flex items-center justify-center">
+                                        <div class="relative flex h-3 w-3">
+                                            <span class="animate-pulse-ring absolute inline-flex h-full w-full rounded-full bg-emerald-400"></span>
+                                            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="radar-coords-label" class="absolute bottom-2 left-2.5 right-2.5 flex justify-between text-[10px] font-mono text-zinc-400 bg-[#111114]/90 px-2 py-1 rounded border border-[#27272a]">
+                                    <span>LAT: —</span>
+                                    <span>LON: —</span>
+                                </div>
+                            </div>
+
+                            <a id="maps-external-link" href="#" target="_blank" rel="noopener noreferrer" class="w-full py-2 px-3 rounded-lg bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] text-center text-xs font-mono text-zinc-300 hover:text-white transition-colors">
+                                Ver Coordenadas en Mapa &nearr;
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- MODULE 2: CONSULTA WHOIS / IP                             -->
+                <!-- ========================================================= -->
+                <section id="panel-whois" class="module-panel hidden space-y-6">
+                    <div class="border-b border-[#27272a] pb-5">
+                        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100">Consulta WHOIS &amp; Inteligencia RDAP</h1>
+                        <p class="text-sm text-zinc-400 mt-1">
+                            Obtén titularidad pública, bloque CIDR, registro regional (ARIN, LACNIC, RIPE, APNIC), contacto de abuso y datos geográficos de cualquier IPv4 o IPv6.
+                        </p>
+                    </div>
+
+                    <!-- Search Bar & Quick Presets -->
+                    <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4 sm:p-5 space-y-4">
+                        <form id="whois-form" class="flex flex-col sm:flex-row gap-3">
+                            <div class="relative flex-1">
+                                <span class="absolute inset-y-0 left-3.5 flex items-center text-zinc-500 font-mono text-xs">IP &gt;</span>
+                                <input type="text" id="whois-input" placeholder="Ej. 8.8.8.8, 1.1.1.1 o 2606:4700:4700::1111" required
+                                    class="w-full pl-12 pr-4 py-2.5 rounded-lg bg-[#09090b] border border-[#27272a] focus:border-emerald-500 focus:outline-none font-mono text-sm text-zinc-100 placeholder-zinc-600">
+                            </div>
+                            <button type="submit" id="whois-submit-btn" class="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono text-xs font-semibold transition-colors shrink-0">
+                                Consultar Registro
+                            </button>
+                        </form>
+
+                        <!-- Quick Fill Examples -->
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="font-mono text-zinc-500 text-[11px]">Ejemplos rápidos:</span>
+                            <button type="button" onclick="triggerWhoisSample('8.8.8.8')" class="px-2.5 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-300">8.8.8.8 (Google)</button>
+                            <button type="button" onclick="triggerWhoisSample('1.1.1.1')" class="px-2.5 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-300">1.1.1.1 (Cloudflare)</button>
+                            <button type="button" onclick="triggerWhoisSample('208.67.222.222')" class="px-2.5 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-300">208.67.222.222 (OpenDNS)</button>
+                            <button type="button" id="whois-my-ip-shortcut" class="px-2.5 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 font-mono text-[11px] text-cyan-400">Mi IP Actual</button>
+                        </div>
+                    </div>
+
+                    <!-- WHOIS Results Container -->
+                    <div id="whois-results-container" class="hidden space-y-5">
+                        <!-- Summary Top Banner -->
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <div class="flex items-center gap-2.5">
+                                    <span id="whois-res-ip" class="font-mono text-xl sm:text-2xl font-bold text-zinc-100 select-all">—</span>
+                                    <span id="whois-res-rir" class="px-2 py-0.5 text-[11px] font-mono rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">RIR</span>
+                                </div>
+                                <p id="whois-res-netname" class="text-xs font-mono text-zinc-400 mt-1">Nombre de Red: —</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="copyTextById('whois-res-ip', 'IP consultada copiada')" class="px-3 py-1.5 rounded-lg bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] text-xs font-mono text-zinc-300">
+                                    Copiar IP
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Structured Ownership & Network Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Ownership & RDAP -->
+                            <div class="bg-[#111114] border border-[#27272a] rounded-xl overflow-hidden">
+                                <div class="px-4 py-3 bg-[#18181b] border-b border-[#27272a] text-xs font-mono font-semibold text-zinc-200 uppercase">
+                                    Titularidad &amp; Registro RDAP
+                                </div>
+                                <div class="divide-y divide-[#27272a]/70 text-xs font-mono">
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">Titular / Organización</span>
+                                        <span id="whois-owner" class="text-zinc-100 text-right font-medium">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">Bloque CIDR / Rango</span>
+                                        <span id="whois-cidr" class="text-emerald-400 text-right">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">ASN / Proveedor</span>
+                                        <span id="whois-asn" class="text-zinc-200 text-right">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">Contacto Abuse</span>
+                                        <span id="whois-abuse" class="text-cyan-400 text-right break-all">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">Estado / Registro</span>
+                                        <span id="whois-status" class="text-zinc-200 text-right">—</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Geolocation & Routing -->
+                            <div class="bg-[#111114] border border-[#27272a] rounded-xl overflow-hidden">
+                                <div class="px-4 py-3 bg-[#18181b] border-b border-[#27272a] text-xs font-mono font-semibold text-zinc-200 uppercase">
+                                    Localización &amp; Enrutamiento
+                                </div>
+                                <div class="divide-y divide-[#27272a]/70 text-xs font-mono">
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">País</span>
+                                        <span id="whois-country" class="text-zinc-100 text-right">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">Región / Ciudad</span>
+                                        <span id="whois-city" class="text-zinc-200 text-right">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">Coordenadas</span>
+                                        <span id="whois-coords" class="text-zinc-200 text-right">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">Zona Horaria</span>
+                                        <span id="whois-tz" class="text-zinc-200 text-right">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between gap-4">
+                                        <span class="text-zinc-500">Dominio ISP</span>
+                                        <span id="whois-domain" class="text-zinc-200 text-right">—</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Collapsible RDAP Raw Inspector -->
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl overflow-hidden">
+                            <div class="px-4 py-3 bg-[#18181b] border-b border-[#27272a] flex items-center justify-between">
+                                <span class="text-xs font-mono font-semibold text-zinc-300">Respuesta RDAP / WHOIS Completa (JSON)</span>
+                                <button onclick="copyTextById('whois-raw-pre', 'JSON WHOIS copiado')" class="px-2.5 py-1 rounded bg-[#09090b] hover:bg-zinc-800 border border-[#27272a] text-[11px] font-mono text-zinc-300">
+                                    Copiar JSON
+                                </button>
+                            </div>
+                            <pre id="whois-raw-pre" class="p-4 text-xs font-mono text-emerald-300/90 bg-[#09090b] overflow-x-auto max-h-80"></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- MODULE 3: ESTADO DE HOST / WEB                            -->
+                <!-- ========================================================= -->
+                <section id="panel-host-status" class="module-panel hidden space-y-6">
+                    <div class="border-b border-[#27272a] pb-5">
+                        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100">Monitor de Disponibilidad &amp; DNS</h1>
+                        <p class="text-sm text-zinc-400 mt-1">
+                            Comprueba si un sitio web, dominio o dirección IP pública responde activamente, midiendo latencia HTTP/HTTPS y resolución de registros DNS-over-HTTPS.
+                        </p>
+                    </div>
+
+                    <!-- Host Check Input -->
+                    <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4 sm:p-5 space-y-4">
+                        <form id="host-form" class="flex flex-col sm:flex-row gap-3">
+                            <div class="relative flex-1">
+                                <span class="absolute inset-y-0 left-3.5 flex items-center text-zinc-500 font-mono text-xs">HOST &gt;</span>
+                                <input type="text" id="host-input" placeholder="Ej. https://github.com, cloudflare.com o 1.1.1.1" required
+                                    class="w-full pl-16 pr-4 py-2.5 rounded-lg bg-[#09090b] border border-[#27272a] focus:border-emerald-500 focus:outline-none font-mono text-sm text-zinc-100 placeholder-zinc-600">
+                            </div>
+                            <button type="submit" id="host-submit-btn" class="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono text-xs font-semibold transition-colors shrink-0">
+                                Verificar Estado
+                            </button>
+                        </form>
+
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="font-mono text-zinc-500 text-[11px]">Probar objetivos:</span>
+                            <button type="button" onclick="triggerHostSample('https://google.com')" class="px-2.5 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-300">google.com</button>
+                            <button type="button" onclick="triggerHostSample('https://github.com')" class="px-2.5 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-300">github.com</button>
+                            <button type="button" onclick="triggerHostSample('1.1.1.1')" class="px-2.5 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-300">1.1.1.1</button>
+                            <button type="button" onclick="triggerHostSample('https://dominio-inexistente-test-999.org')" class="px-2.5 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-400">Simular Caído</button>
+                        </div>
+                    </div>
+
+                    <!-- Host Result Dashboard -->
+                    <div id="host-results-container" class="hidden space-y-4">
+                        <!-- Main Status Banner -->
+                        <div id="host-status-card" class="bg-[#111114] border border-[#27272a] rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-3">
+                                    <span id="host-badge" class="px-2.5 py-1 rounded-md font-mono text-xs font-bold uppercase tracking-wider">
+                                        ANALIZANDO
+                                    </span>
+                                    <span id="host-target-display" class="font-mono text-base sm:text-lg font-semibold text-zinc-100 break-all">—</span>
+                                </div>
+                                <p id="host-diagnostic-msg" class="text-xs text-zinc-400 font-mono pt-1">—</p>
+                            </div>
+
+                            <div class="flex items-center gap-4 bg-[#09090b] px-4 py-3 rounded-lg border border-[#27272a] shrink-0">
+                                <div>
+                                    <div class="text-[10px] font-mono text-zinc-500 uppercase">Latencia HTTP</div>
+                                    <div id="host-latency-val" class="font-mono text-xl font-bold text-emerald-400">— ms</div>
+                                </div>
+                                <div class="h-8 w-px bg-[#27272a]"></div>
+                                <div>
+                                    <div class="text-[10px] font-mono text-zinc-500 uppercase">Protocolo</div>
+                                    <div id="host-proto-val" class="font-mono text-sm font-semibold text-zinc-200">HTTPS</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DNS & Probe Details -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- DNS-over-HTTPS Records -->
+                            <div class="bg-[#111114] border border-[#27272a] rounded-xl overflow-hidden">
+                                <div class="px-4 py-3 bg-[#18181b] border-b border-[#27272a] flex items-center justify-between">
+                                    <span class="text-xs font-mono font-semibold text-zinc-200 uppercase">Resolución DNS (Cloudflare DoH)</span>
+                                    <span id="dns-status-tag" class="text-[10px] font-mono text-cyan-400">A / AAAA</span>
+                                </div>
+                                <div id="dns-records-list" class="p-4 font-mono text-xs space-y-2 text-zinc-300">
+                                    —
+                                </div>
+                            </div>
+
+                            <!-- Probe Telemetry -->
+                            <div class="bg-[#111114] border border-[#27272a] rounded-xl overflow-hidden">
+                                <div class="px-4 py-3 bg-[#18181b] border-b border-[#27272a] text-xs font-mono font-semibold text-zinc-200 uppercase">
+                                    Telemetría
+                                </div>
+                                <div class="divide-y divide-[#27272a]/70 text-xs font-mono">
+                                    <div class="px-4 py-2.5 flex justify-between">
+                                        <span class="text-zinc-500">URL</span>
+                                        <span id="probe-url" class="text-zinc-200 truncate max-w-[220px]">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between">
+                                        <span class="text-zinc-500">Respuesta de Red</span>
+                                        <span id="probe-http-state" class="text-zinc-200">—</span>
+                                    </div>
+                                    <div class="px-4 py-2.5 flex justify-between">
+                                        <span class="text-zinc-500">Timestamp UTC</span>
+                                        <span id="probe-timestamp" class="text-zinc-400">—</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- MODULE 4: ESCÁNER DE PUERTOS                              -->
+                <!-- ========================================================= -->
+                <section id="panel-port-scanner" class="module-panel hidden space-y-6">
+                    <div class="border-b border-[#27272a] pb-5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100">Escáner de Puertos TCP / Web</h1>
+                            <span class="text-[11px] font-mono px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                                SONDA ASÍNCRONA DE NAVEGADOR
+                            </span>
+                        </div>
+                        <p class="text-sm text-zinc-400 mt-1">
+                            Analiza puertos expuestos en una IP pública o dominio mediante sondas de conexión directa y temporización de sockets.
+                        </p>
+                    </div>
+
+                    <!-- Scanner Controls -->
+                    <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4 sm:p-5 space-y-4">
+                        <form id="port-scan-form" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                <div class="md:col-span-7 relative">
+                                    <span class="absolute inset-y-0 left-3.5 flex items-center text-zinc-500 font-mono text-xs">TARGET &gt;</span>
+                                    <input type="text" id="scan-target-input" placeholder="Ej. 1.1.1.1, scanme.nmap.org o tu IP" required
+                                        class="w-full pl-20 pr-4 py-2.5 rounded-lg bg-[#09090b] border border-[#27272a] focus:border-emerald-500 focus:outline-none font-mono text-sm text-zinc-100 placeholder-zinc-600">
+                                </div>
+                                <div class="md:col-span-5">
+                                    <select id="scan-profile-select" class="w-full px-3.5 py-2.5 rounded-lg bg-[#09090b] border border-[#27272a] focus:border-emerald-500 focus:outline-none font-mono text-xs text-zinc-200">
+                                        <option value="common">Perfil: Puertos Comunes (80, 443, 8080, 8443, 22, 21, 3306, 5432)</option>
+                                        <option value="web">Perfil: Web &amp; Cloud (80, 443, 3000, 5000, 8000, 8080, 8443, 9000)</option>
+                                        <option value="infra">Perfil: Infraestructura &amp; DB (21, 22, 25, 53, 3306, 5432, 6379, 27017)</option>
+                                        <option value="custom">Perfil: Personalizado (Lista separada por comas)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Custom Ports Input (Hidden unless 'custom' selected) -->
+                            <div id="custom-ports-wrapper" class="hidden">
+                                <label class="block text-xs font-mono text-zinc-400 mb-1.5">Puertos personalizados (ej. 22, 80, 443, 3000, 8080):</label>
+                                <input type="text" id="custom-ports-input" value="21, 22, 80, 443, 3306, 8080, 8443"
+                                    class="w-full px-3.5 py-2 rounded-lg bg-[#09090b] border border-[#27272a] focus:border-emerald-500 focus:outline-none font-mono text-xs text-zinc-100">
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                                <div class="flex flex-wrap items-center gap-2 text-xs">
+                                    <span class="font-mono text-zinc-500 text-[11px]">Objetivos:</span>
+                                    <button type="button" onclick="setScanTarget('1.1.1.1')" class="px-2 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-300">1.1.1.1</button>
+                                    <button type="button" onclick="setScanTarget('scanme.nmap.org')" class="px-2 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] font-mono text-[11px] text-zinc-300">scanme.nmap.org</button>
+                                    <button type="button" id="scan-my-ip-shortcut" class="px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 font-mono text-[11px] text-cyan-400">Mi IP Pública</button>
+                                </div>
+
+                                <button type="submit" id="start-scan-btn" class="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono text-xs font-semibold transition-colors">
+                                    Iniciar Escaneo
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Technical Sandbox Note -->
+                        <div class="p-3 rounded-lg bg-[#09090b] border border-[#27272a] text-[11px] font-mono text-zinc-400 flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>
+                                <strong>Nota Técnica:</strong> Los navegadores web bloquean por seguridad (RFC/Fetch Spec) el acceso directo a puertos privilegiados no-HTTP (como 21, 22, 25, 3306) y raw sockets TCP. Este escáner detecta servicios Web/HTTP/WebSocket activos y proporciona abajo el comando exacto de <code>nmap</code> para auditoría TCP SYN completa desde tu terminal.
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Progress & Results Table -->
+                    <div id="scan-results-section" class="hidden space-y-4">
+                        <!-- Progress Bar -->
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4">
+                            <div class="flex items-center justify-between text-xs font-mono mb-2">
+                                <span id="scan-status-text" class="text-zinc-300">Escaneando puertos...</span>
+                                <span id="scan-progress-pct" class="text-emerald-400">0%</span>
+                            </div>
+                            <div class="w-full h-2 bg-[#09090b] rounded-full overflow-hidden border border-[#27272a]">
+                                <div id="scan-progress-bar" class="h-full bg-emerald-500 transition-all duration-200" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Ports Table -->
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl overflow-hidden">
+                            <div class="px-4 py-3 bg-[#18181b] border-b border-[#27272a] flex items-center justify-between">
+                                <span class="text-xs font-mono font-semibold text-zinc-200 uppercase">Resultados por Puerto</span>
+                                <span id="scan-summary-counts" class="text-xs font-mono text-zinc-400">0 abiertos</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse font-mono text-xs">
+                                    <thead>
+                                        <tr class="border-b border-[#27272a] text-zinc-500 bg-[#0d0d10]">
+                                            <th class="py-2.5 px-4">PUERTO</th>
+                                            <th class="py-2.5 px-4">SERVICIO / PROTOCOLO</th>
+                                            <th class="py-2.5 px-4">ESTADO</th>
+                                            <th class="py-2.5 px-4">LATENCIA</th>
+                                            <th class="py-2.5 px-4">DIAGNÓSTICO</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ports-table-body" class="divide-y divide-[#27272a]/70">
+                                        <!-- Dynamic Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- CLI Nmap / Netcat Generator -->
+                        <div class="bg-[#111114] border border-[#27272a] rounded-xl p-4 space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-mono font-semibold text-zinc-300">Comando CLI Recomendado (Auditoría TCP Completa)</span>
+                                <button onclick="copyTextById('nmap-cli-cmd', 'Comando Nmap copiado')" class="px-2.5 py-1 rounded bg-[#18181b] hover:bg-zinc-800 border border-[#27272a] text-[11px] font-mono text-emerald-400">
+                                    Copiar Comando
+                                </button>
+                            </div>
+                            <pre id="nmap-cli-cmd" class="p-3 rounded-lg bg-[#09090b] border border-[#27272a] font-mono text-xs text-cyan-300 overflow-x-auto select-all">nmap -sT -Pn -p 21,22,80,443,3306,8080 1.1.1.1</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- GLOBAL RAW JSON / TERMINAL INSPECTOR OVERLAY / PANEL      -->
+                <!-- ========================================================= -->
+                <section id="raw-json-panel" class="hidden bg-[#111114] border border-cyan-500/30 rounded-xl overflow-hidden shadow-lg">
+                    <div class="px-4 py-3 bg-[#18181b] border-b border-[#27272a] flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                            <span class="text-xs font-mono font-semibold text-cyan-300 uppercase">Salida Cruda / Telemetría JSON del Módulo Activo</span>
+                        </div>
+                        <button onclick="copyTextById('global-raw-json', 'JSON crudo copiado al portapapeles')" class="px-3 py-1 rounded bg-[#09090b] hover:bg-zinc-800 border border-[#27272a] text-xs font-mono text-zinc-300">
+                            Copiar JSON
+                        </button>
+                    </div>
+                    <pre id="global-raw-json" class="p-4 text-xs font-mono text-zinc-300 bg-[#09090b] overflow-x-auto max-h-96">{
+  "estado": "Esperando telemetría..."
+}</pre>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        /**
+         * Global Application State
+         */
+        const appState = {
+            activeTab: 'my-ip',
+            rawViewOpen: false,
+            myIpData: {
+                ipv4: null,
+                ipv6: null,
+                geo: null
+            },
+            rawPayloads: {
+                'my-ip': { mensaje: 'Cargando datos de red...' },
+                'whois': { mensaje: 'Realiza una consulta WHOIS para ver el payload RDAP.' },
+                'host-status': { mensaje: 'Verifica un host o dominio para inspeccionar su telemetría.' },
+                'port-scanner': { mensaje: 'Ejecuta un escaneo de puertos para obtener el reporte JSON.' }
+            }
+        };
+
+        /**
+         * Utility: Toast Notification System (No alert() used)
+         */
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const borderClass = type === 'error' ? 'border-rose-500/50 text-rose-200' : 'border-emerald-500/50 text-emerald-200';
+            const dotClass = type === 'error' ? 'bg-rose-400' : 'bg-emerald-400';
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-[#18181b]/95 backdrop-blur border ${borderClass} shadow-xl font-mono text-xs transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <span class="w-2 h-2 rounded-full ${dotClass}"></span>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2600);
+        }
+
+        /**
+         * Utility: Safe Clipboard Copy using document.execCommand('copy') fallback
+         */
+        function copyToClipboard(text, successMsg = 'Copiado al portapapeles') {
+            if (!text || text === '—' || text.includes('Detectando')) return;
+            const textarea = document.createElement('textarea');
+            textarea.value = text.trim();
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast(successMsg, 'success');
+            } catch (err) {
+                showToast('No se pudo copiar el texto', 'error');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function copyTextById(elementId, successMsg) {
+            const el = document.getElementById(elementId);
+            if (el) copyToClipboard(el.innerText, successMsg);
+        }
+
+        /**
+         * Utility: Update Global Raw JSON Viewer
+         */
+        function updateRawViewer() {
+            const pre = document.getElementById('global-raw-json');
+            const payload = appState.rawPayloads[appState.activeTab] || {};
+            pre.textContent = JSON.stringify(payload, null, 2);
+        }
+
+        /**
+         * Navigation & Mobile Drawer Logic
+         */
+        const tabBreadcrumbs = {
+            'my-ip': 'mi-ip-publica',
+            'whois': 'consulta-whois-ip',
+            'host-status': 'estado-host-web',
+            'port-scanner': 'escaner-puertos'
+        };
+
+        function switchTab(tabId) {
+            appState.activeTab = tabId;
+
+            // Update Navigation Styling
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                const isTarget = btn.getAttribute('data-tab') === tabId;
+                const badge = btn.querySelector('span:last-child');
+                if (isTarget) {
+                    btn.className = 'nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all bg-[#18181b] text-emerald-400 border border-emerald-500/30 shadow-xs';
+                    if (badge) badge.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                } else {
+                    btn.className = 'nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all text-zinc-400 hover:text-zinc-100 hover:bg-[#18181b]/70 border border-transparent';
+                    if (badge) badge.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-500';
+                }
+            });
+
+            // Switch Panels
+            document.querySelectorAll('.module-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            const activePanel = document.getElementById(`panel-${tabId}`);
+            if (activePanel) activePanel.classList.remove('hidden');
+
+            // Update Breadcrumb & Raw JSON
+            document.getElementById('breadcrumb-current').textContent = tabBreadcrumbs[tabId] || tabId;
+            updateRawViewer();
+
+            // Close mobile drawer if open
+            closeMobileSidebar();
+        }
+
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+
+        function openMobileSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            backdrop.classList.remove('hidden');
+        }
+
+        function closeMobileSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            backdrop.classList.add('hidden');
+        }
+
+        document.getElementById('mobile-menu-btn').addEventListener('click', openMobileSidebar);
+        document.getElementById('close-sidebar-btn').addEventListener('click', closeMobileSidebar);
+        backdrop.addEventListener('click', closeMobileSidebar);
+
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
+        });
+
+        // Raw View Toggle
+        document.getElementById('toggle-raw-btn').addEventListener('click', () => {
+            appState.rawViewOpen = !appState.rawViewOpen;
+            const rawPanel = document.getElementById('raw-json-panel');
+            const label = document.getElementById('toggle-raw-label');
+            if (appState.rawViewOpen) {
+                rawPanel.classList.remove('hidden');
+                label.textContent = 'Ocultar JSON';
+                updateRawViewer();
+                rawPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                rawPanel.classList.add('hidden');
+                label.textContent = 'Vista Cruda / JSON';
+            }
+        });
+
+        /**
+         * Live UTC/Local Clock in Sidebar
+         */
+        function startClock() {
+            const clockEl = document.getElementById('clock-display');
+            setInterval(() => {
+                const now = new Date();
+                clockEl.textContent = now.toTimeString().split(' ')[0];
+            }, 1000);
+        }
+
+        /**
+         * =========================================================================
+         * MODULE 1: PUBLIC IPv4 & IPv6 + GEOLOCATION DETECTION
+         * =========================================================================
+         */
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 6500) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(id);
+                return response;
+            } catch (err) {
+                clearTimeout(id);
+                throw err;
+            }
+        }
+
+        async function detectPublicIPs() {
+            const refreshIcon = document.getElementById('refresh-myip-icon');
+            const statusBadge = document.getElementById('myip-status-badge');
+            refreshIcon.classList.add('animate-spin');
+            statusBadge.textContent = 'SONDEANDO...';
+
+            let ipv4 = null;
+            let ipv6 = null;
+            let geoData = null;
+
+            // 1. Prioritized IPv4 Detection via api.ipify.org
+            try {
+                const res4 = await fetchWithTimeout('https://api.ipify.org?format=json');
+                if (res4.ok) {
+                    const data4 = await res4.json();
+                    ipv4 = data4.ip;
+                }
+            } catch (e) {
+                console.warn('ipify IPv4 fallback triggered');
+            }
+
+            // 2. Dual-Stack IPv6 Detection via api64.ipify.org
+            try {
+                const res64 = await fetchWithTimeout('https://api64.ipify.org?format=json');
+                if (res64.ok) {
+                    const data64 = await res64.json();
+                    if (data64.ip && data64.ip.includes(':')) {
+                        ipv6 = data64.ip;
+                    } else if (!ipv4 && data64.ip) {
+                        ipv4 = data64.ip;
+                    }
+                }
+            } catch (e) {
+                console.warn('IPv6 endpoint unreachable or IPv4-only network');
+            }
+
+            // 3. ISP & Geolocation Metadata via ipwho.is (CORS-friendly, rich ASN/ISP data)
+            try {
+                const geoTarget = ipv4 ? `https://ipwho.is/${ipv4}` : 'https://ipwho.is/';
+                const resGeo = await fetchWithTimeout(geoTarget);
+                if (resGeo.ok) {
+                    const parsed = await resGeo.json();
+                    if (parsed.success !== false) {
+                        geoData = parsed;
+                        if (!ipv4 && parsed.ip && !parsed.ip.includes(':')) {
+                            ipv4 = parsed.ip;
+                        }
+                    }
+                }
+            } catch (e) {
+                // Secondary fallback: ipapi.co
+                try {
+                    const resFallback = await fetchWithTimeout('https://ipapi.co/json/');
+                    if (resFallback.ok) {
+                        const fb = await resFallback.json();
+                        if (!ipv4 && fb.ip) ipv4 = fb.ip;
+                        geoData = {
+                            ip: fb.ip,
+                            country: fb.country_name,
+                            country_code: fb.country_code,
+                            region: fb.region,
+                            city: fb.city,
+                            postal: fb.postal,
+                            latitude: fb.latitude,
+                            longitude: fb.longitude,
+                            continent: fb.continent_code,
+                            connection: {
+                                asn: fb.asn ? Number(String(fb.asn).replace(/\D/g, '')) : null,
+                                org: fb.org,
+                                isp: fb.org
+                            },
+                            timezone: { id: fb.timezone }
+                        };
+                    }
+                } catch (err2) {
+                    console.error('All GeoIP providers failed or blocked by client');
+                }
+            }
+
+            // Update App State
+            appState.myIpData = { ipv4, ipv6, geo: geoData };
+            appState.rawPayloads['my-ip'] = {
+                timestamp: new Date().toISOString(),
+                ipv4_publica: ipv4 || 'No detectada',
+                ipv6_publica: ipv6 || 'No detectada / Solo IPv4',
+                telemetria_isp_geo: geoData || { error: 'Bloqueado por extensión o red offline' }
+            };
+            updateRawViewer();
+
+            // Render IPv4 Hero Card
+            const ipv4El = document.getElementById('my-ipv4-value');
+            if (ipv4) {
+                ipv4El.textContent = ipv4;
+                document.getElementById('sidebar-current-ip').textContent = ipv4;
+                statusBadge.textContent = 'CONECTADO • ACTIVO';
+                statusBadge.className = 'px-2 py-0.5 text-[11px] font-mono rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+            } else {
+                ipv4El.textContent = 'No disponible (Verificar red/AdBlock)';
+                document.getElementById('sidebar-current-ip').textContent = 'Sin conexión API';
+                statusBadge.textContent = 'SIN RESPUESTA API';
+                statusBadge.className = 'px-2 py-0.5 text-[11px] font-mono rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30';
+            }
+
+            // Render IPv6 Card
+            const ipv6El = document.getElementById('my-ipv6-value');
+            const ipv6Pill = document.getElementById('ipv6-status-pill');
+            const ipv6Dot = document.getElementById('ipv6-dot');
+            const copyIpv6Btn = document.getElementById('copy-ipv6-btn');
+            const ipv6Note = document.getElementById('ipv6-note');
+
+            if (ipv6) {
+                ipv6El.textContent = ipv6;
+                ipv6Pill.textContent = 'ACTIVA (DUAL-STACK)';
+                ipv6Pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30';
+                ipv6Dot.className = 'w-2 h-2 rounded-full bg-cyan-400';
+                copyIpv6Btn.classList.remove('hidden');
+                ipv6Note.textContent = 'Enrutamiento IPv6 nativo detectado en tu interfaz.';
+                document.getElementById('sidebar-ip-badge').textContent = 'IPv4 + IPv6';
+            } else {
+                ipv6El.textContent = 'No detectada / Solo IPv4';
+                ipv6Pill.textContent = 'SOLO IPv4';
+                ipv6Pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700';
+                ipv6Dot.className = 'w-2 h-2 rounded-full bg-zinc-600';
+                copyIpv6Btn.classList.add('hidden');
+                ipv6Note.textContent = 'Tu ISP o router local no anuncia salida IPv6 pública.';
+            }
+
+            // Render Geo & ISP Details
+            if (geoData) {
+                const isp = geoData.connection?.isp || geoData.connection?.org || 'Desconocido';
+                const org = geoData.connection?.org || isp;
+                const asn = geoData.connection?.asn ? `AS${geoData.connection.asn}` : 'ASN N/D';
+                const city = geoData.city || '—';
+                const region = geoData.region || '—';
+                const country = geoData.country || '—';
+                const countryCode = geoData.country_code || '';
+                const postal = geoData.postal || 'N/D';
+                const lat = geoData.latitude !== undefined ? Number(geoData.latitude).toFixed(4) : '—';
+                const lon = geoData.longitude !== undefined ? Number(geoData.longitude).toFixed(4) : '—';
+                const tz = geoData.timezone?.id || '—';
+
+                document.getElementById('my-ipv4-isp-inline').textContent = isp;
+                document.getElementById('sidebar-current-isp').textContent = `${asn} • ${isp}`;
+
+                document.getElementById('meta-isp').textContent = isp;
+                document.getElementById('meta-org').textContent = org;
+                document.getElementById('meta-asn').textContent = asn;
+                document.getElementById('meta-route').textContent = geoData.connection?.domain || 'Enrutamiento Público';
+                document.getElementById('meta-location').textContent = `${city}, ${countryCode}`;
+                document.getElementById('meta-postal').textContent = `Código Postal: ${postal}`;
+                document.getElementById('meta-coords').textContent = `${lat}, ${lon}`;
+                document.getElementById('meta-timezone').textContent = tz;
+
+                document.getElementById('detail-country').textContent = `${country} (${countryCode})`;
+                document.getElementById('detail-region').textContent = region;
+                document.getElementById('detail-city').textContent = city;
+                document.getElementById('detail-continent').textContent = geoData.continent || '—';
+                document.getElementById('detail-type').textContent = ipv6 ? 'Dual-Stack (IPv4 + IPv6)' : 'IPv4 Estándar';
+
+                document.getElementById('radar-coords-label').innerHTML = `<span>LAT: ${lat}</span><span>LON: ${lon}</span>`;
+                if (lat !== '—' && lon !== '—') {
+                    document.getElementById('maps-external-link').href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=12/${lat}/${lon}`;
+                }
+            }
+
+            refreshIcon.classList.remove('animate-spin');
+        }
+
+        document.getElementById('refresh-myip-btn').addEventListener('click', () => {
+            detectPublicIPs();
+            showToast('Actualizando telemetría de IP pública...');
+        });
+
+        document.getElementById('inspect-own-ip-btn').addEventListener('click', () => {
+            const target = appState.myIpData.ipv4 || '8.8.8.8';
+            switchTab('whois');
+            document.getElementById('whois-input').value = target;
+            runWhoisLookup(target);
+        });
+
+        /**
+         * =========================================================================
+         * MODULE 2: WHOIS / RDAP & IP INTELLIGENCE LOOKUP
+         * =========================================================================
+         */
+        async function runWhoisLookup(ipQuery) {
+            const cleanIp = ipQuery.trim();
+            if (!cleanIp) return;
+
+            const submitBtn = document.getElementById('whois-submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Consultando...';
+
+            try {
+                // Parallel query: Geo/ASN metadata (ipwho.is) + Official RDAP Registry (rdap.org)
+                const [geoRes, rdapRes] = await Promise.allSettled([
+                    fetchWithTimeout(`https://ipwho.is/${encodeURIComponent(cleanIp)}`),
+                    fetchWithTimeout(`https://rdap.org/ip/${encodeURIComponent(cleanIp)}`)
+                ]);
+
+                let geoJson = null;
+                let rdapJson = null;
+
+                if (geoRes.status === 'fulfilled' && geoRes.value.ok) {
+                    const parsed = await geoRes.value.json();
+                    if (parsed.success !== false) geoJson = parsed;
+                }
+
+                if (rdapRes.status === 'fulfilled' && rdapRes.value.ok) {
+                    rdapJson = await rdapRes.value.json();
+                }
+
+                if (!geoJson && !rdapJson) {
+                    showToast('IP inválida o sin respuesta de registros RDAP/WHOIS', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Consultar Registro';
+                    return;
+                }
+
+                // Extract RDAP fields (CIDR, RIR, Netname, Abuse email, Status)
+                let cidr = 'No especificado';
+                let netname = rdapJson?.name || '—';
+                let rir = 'RDAP / GLOBAL';
+                let abuseEmail = 'No listado públicamente';
+                let rdapStatus = Array.isArray(rdapJson?.status) ? rdapJson.status.join(', ') : 'Activo';
+
+                if (rdapJson?.cidr0_cidrs && rdapJson.cidr0_cidrs.length > 0) {
+                    const c = rdapJson.cidr0_cidrs[0];
+                    const prefix = c.v4prefix || c.v6prefix;
+                    if (prefix && c.length !== undefined) cidr = `${prefix}/${c.length}`;
+                } else if (rdapJson?.startAddress && rdapJson?.endAddress) {
+                    cidr = `${rdapJson.startAddress} - ${rdapJson.endAddress}`;
+                }
+
+                // Detect RIR from RDAP links or port43
+                const port43 = (rdapJson?.port43 || '').toLowerCase();
+                if (port43.includes('arin')) rir = 'ARIN (Norteamérica)';
+                else if (port43.includes('lacnic')) rir = 'LACNIC (Latinoamérica)';
+                else if (port43.includes('ripe')) rir = 'RIPE NCC (Europa)';
+                else if (port43.includes('apnic')) rir = 'APNIC (Asia-Pacífico)';
+                else if (port43.includes('afrinic')) rir = 'AFRINIC (África)';
+
+                // Parse vCard entities for Abuse Email & Org Name
+                let rdapOrg = null;
+                if (Array.isArray(rdapJson?.entities)) {
+                    for (const ent of rdapJson.entities) {
+                        if (ent.vcardArray && Array.isArray(ent.vcardArray[1])) {
+                            for (const prop of ent.vcardArray[1]) {
+                                if (prop[0] === 'fn' && !rdapOrg) rdapOrg = prop[3];
+                                if (prop[0] === 'email' && String(prop[3]).includes('@')) {
+                                    if (ent.roles?.includes('abuse') || abuseEmail === 'No listado públicamente') {
+                                        abuseEmail = prop[3];
+                                    }
+                                }
+                            }
+                        }
+                        // Nested entities
+                        if (Array.isArray(ent.entities)) {
+                            for (const sub of ent.entities) {
+                                if (sub.vcardArray && Array.isArray(sub.vcardArray[1])) {
+                                    for (const prop of sub.vcardArray[1]) {
+                                        if (prop[0] === 'email' && String(prop[3]).includes('@')) {
+                                            abuseEmail = prop[3];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                const owner = rdapOrg || geoJson?.connection?.org || geoJson?.connection?.isp || 'No disponible';
+                const asnText = geoJson?.connection?.asn
+                    ? `AS${geoJson.connection.asn} (${geoJson.connection.isp || ''})`
+                    : (geoJson?.connection?.isp || '—');
+
+                // Populate UI
+                document.getElementById('whois-res-ip').textContent = cleanIp;
+                document.getElementById('whois-res-rir').textContent = rir;
+                document.getElementById('whois-res-netname').textContent = `Identificador de Red: ${netname} • Handle: ${rdapJson?.handle || 'N/A'}`;
+
+                document.getElementById('whois-owner').textContent = owner;
+                document.getElementById('whois-cidr').textContent = cidr;
+                document.getElementById('whois-asn').textContent = asnText;
+                document.getElementById('whois-abuse').textContent = abuseEmail;
+                document.getElementById('whois-status').textContent = rdapStatus;
+
+                document.getElementById('whois-country').textContent = geoJson ? `${geoJson.country} (${geoJson.country_code})` : '—';
+                document.getElementById('whois-city').textContent = geoJson ? `${geoJson.region || ''}, ${geoJson.city || ''}`.replace(/^,\s*/, '') : '—';
+                document.getElementById('whois-coords').textContent = geoJson ? `${geoJson.latitude}, ${geoJson.longitude}` : '—';
+                document.getElementById('whois-tz').textContent = geoJson?.timezone?.id || '—';
+                document.getElementById('whois-domain').textContent = geoJson?.connection?.domain || '—';
+
+                const combinedPayload = {
+                    consulta: cleanIp,
+                    resumen_whois: {
+                        titular: owner,
+                        red: netname,
+                        cidr: cidr,
+                        registro_regional: rir,
+                        asn: asnText,
+                        contacto_abuse: abuseEmail
+                    },
+                    geolocalizacion: geoJson || {},
+                    rdap_oficial: rdapJson || {}
+                };
+
+                document.getElementById('whois-raw-pre').textContent = JSON.stringify(combinedPayload, null, 2);
+                appState.rawPayloads['whois'] = combinedPayload;
+                updateRawViewer();
+
+                document.getElementById('whois-results-container').classList.remove('hidden');
+                showToast(`Registro WHOIS/RDAP obtenido para ${cleanIp}`);
+
+            } catch (error) {
+                showToast('Error al consultar la base de datos WHOIS/RDAP', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Consultar Registro';
+            }
+        }
+
+        document.getElementById('whois-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            runWhoisLookup(document.getElementById('whois-input').value);
+        });
+
+        function triggerWhoisSample(ip) {
+            document.getElementById('whois-input').value = ip;
+            runWhoisLookup(ip);
+        }
+
+        document.getElementById('whois-my-ip-shortcut').addEventListener('click', () => {
+            const myIp = appState.myIpData.ipv4 || '8.8.8.8';
+            triggerWhoisSample(myIp);
+        });
+
+        /**
+         * =========================================================================
+         * MODULE 3: HOST / WEBSITE AVAILABILITY & DNS-OVER-HTTPS CHECKER
+         * =========================================================================
+         */
+        async function checkHostStatus(rawTarget) {
+            let target = rawTarget.trim();
+            if (!target) return;
+
+            const submitBtn = document.getElementById('host-submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Verificando...';
+
+            // Normalize URL vs Hostname/IP
+            let probeUrl = target;
+            let hostname = target;
+            let protocol = 'HTTPS';
+
+            if (!/^https?:\/\//i.test(target)) {
+                probeUrl = `https://${target}`;
+            } else {
+                protocol = target.toLowerCase().startsWith('http://') ? 'HTTP' : 'HTTPS';
+            }
+
+            try {
+                const parsedUrl = new URL(probeUrl);
+                hostname = parsedUrl.hostname;
+            } catch (e) {
+                showToast('Formato de URL o IP no válido', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Verificar Estado';
+                return;
+            }
+
+            const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(':');
+            let dnsRecords = [];
+            let dnsResolved = isIpAddress;
+
+            // 1. Resolve DNS via Cloudflare DoH if target is a domain name
+            if (!isIpAddress) {
+                try {
+                    const [aRes, aaaaRes] = await Promise.allSettled([
+                        fetchWithTimeout(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=A`, {
+                            headers: { 'Accept': 'application/dns-json' }
+                        }, 4500),
+                        fetchWithTimeout(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=AAAA`, {
+                            headers: { 'Accept': 'application/dns-json' }
+                        }, 4500)
+                    ]);
+
+                    if (aRes.status === 'fulfilled' && aRes.value.ok) {
+                        const aJson = await aRes.value.json();
+                        if (Array.isArray(aJson.Answer)) {
+                            aJson.Answer.forEach(ans => dnsRecords.push({ type: ans.type === 1 ? 'A' : 'CNAME', data: ans.data, ttl: ans.TTL }));
+                        }
+                    }
+                    if (aaaaRes.status === 'fulfilled' && aaaaRes.value.ok) {
+                        const aaaaJson = await aaaaRes.value.json();
+                        if (Array.isArray(aaaaJson.Answer)) {
+                            aaaaJson.Answer.forEach(ans => {
+                                if (ans.type === 28) dnsRecords.push({ type: 'AAAA', data: ans.data, ttl: ans.TTL });
+                            });
+                        }
+                    }
+                    if (dnsRecords.length > 0) dnsResolved = true;
+                } catch (err) {
+                    console.warn('DoH query failed', err);
+                }
+            }
+
+            // 2. Measure HTTP/HTTPS Reachability & Latency
+            let isOnline = false;
+            let latencyMs = null;
+            let probeStateText = '';
+
+            const t0 = performance.now();
+            try {
+                // Using mode: 'no-cors' allows detecting any live HTTP/HTTPS server even without CORS headers
+                await fetchWithTimeout(probeUrl, {
+                    mode: 'no-cors',
+                    cache: 'no-store'
+                }, 6000);
+                const t1 = performance.now();
+                latencyMs = Math.round(t1 - t0);
+                isOnline = true;
+                probeStateText = 'Respuesta HTTP/TLS recibida (Socket activo)';
+            } catch (err) {
+                // If HTTPS failed on a raw IP or non-SSL host, try HTTP fallback if user didn't force https://
+                if (!/^https:\/\//i.test(target) && protocol === 'HTTPS') {
+                    try {
+                        const httpFallback = `http://${hostname}`;
+                        const t2 = performance.now();
+                        await fetchWithTimeout(httpFallback, { mode: 'no-cors', cache: 'no-store' }, 4500);
+                        const t3 = performance.now();
+                        latencyMs = Math.round(t3 - t2);
+                        isOnline = true;
+                        protocol = 'HTTP';
+                        probeUrl = httpFallback;
+                        probeStateText = 'Respuesta HTTP (Puerto 80) recibida';
+                    } catch (errHttp) {
+                        isOnline = false;
+                        probeStateText = dnsResolved ? 'Timeout / Puerto Web cerrado o filtrado' : 'Fallo de resolución DNS (NXDOMAIN)';
+                    }
+                } else {
+                    isOnline = false;
+                    probeStateText = dnsResolved ? 'Conexión rechazada o tiempo agotado' : 'Host inexistente / Error DNS';
+                }
+            }
+
+            // Render Results
+            const badgeEl = document.getElementById('host-badge');
+            const msgEl = document.getElementById('host-diagnostic-msg');
+            const latEl = document.getElementById('host-latency-val');
+
+            document.getElementById('host-target-display').textContent = hostname;
+            document.getElementById('host-proto-val').textContent = protocol;
+            document.getElementById('probe-url').textContent = probeUrl;
+            document.getElementById('probe-http-state').textContent = probeStateText;
+            document.getElementById('probe-timestamp').textContent = new Date().toISOString();
+
+            if (isOnline) {
+                badgeEl.textContent = 'ACTIVO / EN LÍNEA';
+                badgeEl.className = 'px-2.5 py-1 rounded-md font-mono text-xs font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/40';
+                msgEl.textContent = `El servidor respondió correctamente en ${latencyMs} ms.`;
+                latEl.textContent = `${latencyMs} ms`;
+                latEl.className = 'font-mono text-xl font-bold text-emerald-400';
+            } else if (dnsResolved) {
+                badgeEl.textContent = 'DNS ACTIVO / SIN WEB';
+                badgeEl.className = 'px-2.5 py-1 rounded-md font-mono text-xs font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/40';
+                msgEl.textContent = 'El dominio/IP existe, pero no responde peticiones HTTP/HTTPS públicas.';
+                latEl.textContent = 'TIMEOUT';
+                latEl.className = 'font-mono text-xl font-bold text-amber-400';
+            } else {
+                badgeEl.textContent = 'INACCESIBLE / CAÍDO';
+                badgeEl.className = 'px-2.5 py-1 rounded-md font-mono text-xs font-bold uppercase tracking-wider bg-rose-500/15 text-rose-400 border border-rose-500/40';
+                msgEl.textContent = 'No se pudo resolver el dominio ni establecer conexión con el host.';
+                latEl.textContent = 'ERR';
+                latEl.className = 'font-mono text-xl font-bold text-rose-400';
+            }
+
+            // Render DNS list
+            const dnsListEl = document.getElementById('dns-records-list');
+            if (isIpAddress) {
+                dnsListEl.innerHTML = `<div class="text-zinc-400">Objetivo ingresado como dirección IP directa (<span class="text-zinc-200">${hostname}</span>). No requiere resolución DNS.</div>`;
+            } else if (dnsRecords.length > 0) {
+                dnsListEl.innerHTML = dnsRecords.map(r => `
+                    <div class="flex items-center justify-between py-1.5 px-2.5 rounded bg-[#09090b] border border-[#27272a]">
+                        <span class="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px]">${r.type}</span>
+                        <span class="text-zinc-200 truncate mx-2">${r.data}</span>
+                        <span class="text-zinc-500 text-[10px]">TTL ${r.ttl}s</span>
+                    </div>
+                `).join('');
+            } else {
+                dnsListEl.innerHTML = `<div class="text-rose-400">Sin registros DNS A/AAAA encontrados para ${hostname}.</div>`;
+            }
+
+            appState.rawPayloads['host-status'] = {
+                objetivo: hostname,
+                url_sondeada: probeUrl,
+                activo: isOnline,
+                latencia_ms: latencyMs,
+                dns_resuelto: dnsResolved,
+                registros_dns: dnsRecords,
+                diagnostico: probeStateText,
+                timestamp: new Date().toISOString()
+            };
+            updateRawViewer();
+
+            document.getElementById('host-results-container').classList.remove('hidden');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Verificar Estado';
+        }
+
+        document.getElementById('host-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            checkHostStatus(document.getElementById('host-input').value);
+        });
+
+        function triggerHostSample(val) {
+            document.getElementById('host-input').value = val;
+            checkHostStatus(val);
+        }
+
+        /**
+         * =========================================================================
+         * MODULE 4: ASYNCHRONOUS BROWSER PORT SCANNER
+         * =========================================================================
+         */
+        const PORT_PROFILES = {
+            common: [80, 443, 8080, 8443, 22, 21, 3306, 5432],
+            web: [80, 443, 3000, 5000, 8000, 8080, 8443, 9000],
+            infra: [21, 22, 25, 53, 3306, 5432, 6379, 27017]
+        };
+
+        const PORT_SERVICES = {
+            21: 'FTP (Transferencia de Archivos)',
+            22: 'SSH (Secure Shell)',
+            23: 'Telnet',
+            25: 'SMTP (Correo Saliente)',
+            53: 'DNS (Domain Name System)',
+            80: 'HTTP (Servidor Web)',
+            110: 'POP3',
+            143: 'IMAP',
+            443: 'HTTPS / TLS (Web Segura)',
+            445: 'SMB / CIFS',
+            3000: 'Node.js / Dev Server',
+            3306: 'MySQL / MariaDB',
+            3389: 'RDP (Escritorio Remoto)',
+            5000: 'Flask / API HTTP',
+            5432: 'PostgreSQL',
+            6379: 'Redis In-Memory DB',
+            8000: 'HTTP Alt / Python Dev',
+            8080: 'HTTP Proxy / Tomcat',
+            8443: 'HTTPS Alt / Panel Control',
+            9000: 'SonarQube / Portainer / PHP-FPM',
+            27017: 'MongoDB'
+        };
+
+        // Browsers explicitly block fetch/XHR to these restricted ports per Fetch Standard
+        const BROWSER_BLOCKED_PORTS = new Set([1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 139, 143, 179, 389, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 556, 563, 587, 601, 636, 993, 995, 2049, 3659, 4045, 6000, 6665, 6666, 6667, 6668, 6669, 6697]);
+
+        document.getElementById('scan-profile-select').addEventListener('change', (e) => {
+            const customWrapper = document.getElementById('custom-ports-wrapper');
+            if (e.target.value === 'custom') {
+                customWrapper.classList.remove('hidden');
+            } else {
+                customWrapper.classList.add('hidden');
+            }
+        });
+
+        function setScanTarget(val) {
+            document.getElementById('scan-target-input').value = val;
+        }
+
+        document.getElementById('scan-my-ip-shortcut').addEventListener('click', () => {
+            const myIp = appState.myIpData.ipv4 || '1.1.1.1';
+            setScanTarget(myIp);
+        });
+
+        /**
+         * Probe a single port using non-blocking HTTP/HTTPS timing & connection rejection analysis
+         */
+        async function probePort(host, port) {
+            const serviceName = PORT_SERVICES[port] || 'Servicio TCP Personalizado';
+
+            // Check if browser security sandbox blocks this port natively
+            if (BROWSER_BLOCKED_PORTS.has(port)) {
+                return {
+                    port,
+                    service: serviceName,
+                    status: 'BLOQUEADO POR NAVEGADOR',
+                    stateCode: 'restricted',
+                    latency: '—',
+                    note: 'Puerto restringido por política CORS/Fetch del navegador (usar Nmap CLI).'
+                };
+            }
+
+            const useHttps = [443, 8443, 9443].includes(port);
+            const proto = useHttps ? 'https' : 'http';
+            const url = `${proto}://${host}:${port}/?_probe=${Date.now()}`;
+            const start = performance.now();
+
+            try {
+                await fetchWithTimeout(url, { mode: 'no-cors', cache: 'no-store' }, 2500);
+                const elapsed = Math.round(performance.now() - start);
+                return {
+                    port,
+                    service: serviceName,
+                    status: 'ABIERTO',
+                    stateCode: 'open',
+                    latency: `${elapsed} ms`,
+                    note: `Servicio ${proto.toUpperCase()} activo y aceptando conexiones.`
+                };
+            } catch (err) {
+                const elapsed = Math.round(performance.now() - start);
+                // Distinguish fast RST/TLS mismatch on an active port vs full timeout
+                if (err.name === 'AbortError' || elapsed >= 2400) {
+                    return {
+                        port,
+                        service: serviceName,
+                        status: 'FILTRADO / CERRADO',
+                        stateCode: 'closed',
+                        latency: `>${elapsed} ms`,
+                        note: 'Sin respuesta (Tiempo de espera agotado / Firewall).'
+                    };
+                } else {
+                    return {
+                        port,
+                        service: serviceName,
+                        status: 'CERRADO / RECHAZADO',
+                        stateCode: 'closed',
+                        latency: `${elapsed} ms`,
+                        note: 'Conexión rechazada o protocolo no-HTTP.'
+                    };
+                }
+            }
+        }
+
+        async function startPortScan(rawTarget) {
+            let host = rawTarget.trim().replace(/^https?:\/\//i, '').split('/')[0].split(':')[0];
+            if (!host) return;
+
+            const profile = document.getElementById('scan-profile-select').value;
+            let ports = [];
+
+            if (profile === 'custom') {
+                const rawPorts = document.getElementById('custom-ports-input').value;
+                ports = [...new Set(
+                    rawPorts.split(',')
+                        .map(p => parseInt(p.trim(), 10))
+                        .filter(p => !isNaN(p) && p >= 1 && p <= 65535)
+                )];
+            } else {
+                ports = PORT_PROFILES[profile] || PORT_PROFILES.common;
+            }
+
+            if (ports.length === 0) {
+                showToast('Ingresa al menos un puerto válido (1-65535)', 'error');
+                return;
+            }
+
+            const startBtn = document.getElementById('start-scan-btn');
+            startBtn.disabled = true;
+            startBtn.textContent = 'Escaneando...';
+
+            const resultsSection = document.getElementById('scan-results-section');
+            const tbody = document.getElementById('ports-table-body');
+            const progressBar = document.getElementById('scan-progress-bar');
+            const progressPct = document.getElementById('scan-progress-pct');
+            const statusText = document.getElementById('scan-status-text');
+
+            resultsSection.classList.remove('hidden');
+            tbody.innerHTML = '';
+            progressBar.style.width = '5%';
+            progressPct.textContent = '5%';
+            statusText.textContent = `Sondeando ${ports.length} puertos en ${host}...`;
+
+            // Update Nmap CLI helper command
+            document.getElementById('nmap-cli-cmd').textContent = `nmap -sT -Pn -p ${ports.join(',')} ${host}`;
+
+            const scanResults = [];
+            let openCount = 0;
+
+            for (let i = 0; i < ports.length; i++) {
+                const port = ports[i];
+                const res = await probePort(host, port);
+                scanResults.push(res);
+                if (res.stateCode === 'open') openCount++;
+
+                // Render row incrementally
+                let badgeHtml = '';
+                if (res.stateCode === 'open') {
+                    badgeHtml = `<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-semibold">ABIERTO</span>`;
+                } else if (res.stateCode === 'restricted') {
+                    badgeHtml = `<span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">SANDBOX WEB</span>`;
+                } else {
+                    badgeHtml = `<span class="px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">CERRADO / FILTRADO</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-[#18181b]/60 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-zinc-100">${res.port}/tcp</td>
+                    <td class="py-3 px-4 text-zinc-300">${res.service}</td>
+                    <td class="py-3 px-4">${badgeHtml}</td>
+                    <td class="py-3 px-4 text-zinc-400">${res.latency}</td>
+                    <td class="py-3 px-4 text-zinc-500 text-[11px]">${res.note}</td>
+                `;
+                tbody.appendChild(tr);
+
+                const pct = Math.round(((i + 1) / ports.length) * 100);
+                progressBar.style.width = `${pct}%`;
+                progressPct.textContent = `${pct}%`;
+                document.getElementById('scan-summary-counts').textContent = `${openCount} abierto(s) de ${ports.length}`;
+            }
+
+            statusText.textContent = `Escaneo completado sobre ${host}`;
+            appState.rawPayloads['port-scanner'] = {
+                objetivo: host,
+                puertos_analizados: ports,
+                abiertos_detectados: openCount,
+                resultados: scanResults,
+                comando_nmap_equivalente: `nmap -sT -Pn -p ${ports.join(',')} ${host}`
+            };
+            updateRawViewer();
+
+            startBtn.disabled = false;
+            startBtn.textContent = 'Iniciar Escaneo';
+            showToast(`Escaneo finalizado: ${openCount} puerto(s) web abierto(s)`);
+        }
+
+        document.getElementById('port-scan-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            startPortScan(document.getElementById('scan-target-input').value);
+        });
+
+        /**
+         * Initialize Application on Load
+         */
+        window.addEventListener('DOMContentLoaded', () => {
+            startClock();
+            detectPublicIPs();
+        });
+    </script>
+</body>
+</html>
